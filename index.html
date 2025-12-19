@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alien Cipher</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root { color-scheme: light dark; }
+    body{
+      --bg:#070a14;
+      --bgImage: radial-gradient(1200px 800px at 12% 10%, rgba(99,102,241,0.28), transparent 55%),
+                 radial-gradient(900px 700px at 85% 20%, rgba(34,197,94,0.18), transparent 55%),
+                 radial-gradient(900px 700px at 50% 95%, rgba(244,63,94,0.12), transparent 55%),
+                 linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+      --accent:#e5e7eb;
+      --cardAlpha:0.08;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      margin:0; padding:20px;
+      background-color:var(--bg);
+      background-image:var(--bgImage);
+      background-size:cover;
+      background-position:center;
+      background-attachment:fixed;
+      color:#e5e7eb;
+    }
+    .wrap{max-width:1100px;margin:0 auto;display:grid;gap:14px}
+    .row{display:grid;gap:14px;grid-template-columns:1fr}
+    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
+    .card{
+      background:rgba(255,255,255,var(--cardAlpha));
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+    }
+    h1{margin:0 0 6px;font-size:20px;display:flex;align-items:center;gap:10px}
+    p{margin:0;color:rgba(229,231,235,0.85)}
+    label{font-size:12px;color:rgba(229,231,235,0.85);display:block;margin-bottom:6px}
+    textarea,input,select{
+      width:100%;box-sizing:border-box;border-radius:14px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(0,0,0,0.30);
+      color:#e5e7eb;
+      padding:10px 12px;outline:none;
+    }
+    textarea{height:260px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.35}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .btn{
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.08);
+      color:#e5e7eb;
+      padding:10px 12px;border-radius:14px;cursor:pointer;font-weight:800
+    }
+    .btn.primary{background:var(--accent);color:#070a14;border-color:rgba(255,255,255,0.25)}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .pill{font-size:12px;padding:4px 10px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;color:rgba(229,231,235,0.9)}
+    .small{font-size:12px;color:rgba(229,231,235,0.75);line-height:1.45}
+    .toast{
+      position:fixed;left:50%;transform:translateX(-50%);
+      bottom:18px;width:min(92vw,880px);padding:12px 14px;border-radius:16px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(0,0,0,0.72);
+      box-shadow:0 18px 40px rgba(0,0,0,0.5);
+      white-space:pre-wrap;z-index:9999
+    }
+    .err{border-color:rgba(244,63,94,0.65);background:rgba(244,63,94,0.12)}
+    .ok{border-color:rgba(34,197,94,0.60);background:rgba(34,197,94,0.12)}
+    .hr{height:1px;background:rgba(255,255,255,0.14);margin:12px 0;border-radius:999px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+    code{background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:10px}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h1><span id="appIcon" aria-hidden="true">🜁</span><span id="appName">Alien Cipher</span></h1>
+          <p id="appTagline">Password-only encryption. Anyone with the same password can decode the alien text.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="pill">AES-GCM</span>
+          <span class="pill">PBKDF2</span>
+          <span class="pill">Alien Scripts</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="row">
+      <section class="card">
+        <div class="controls" style="justify-content:space-between;">
+          <div style="font-weight:900;">Plaintext</div>
+          <div class="controls">
+            <button class="btn" id="copyPlain">Copy</button>
+            <button class="btn" id="clearPlain">Clear</button>
+          </div>
+        </div>
+        <div style="height:10px"></div>
+        <textarea id="plain" placeholder="Type your message here…"></textarea>
+      </section>
+
+      <section class="card">
+        <div class="controls" style="justify-content:space-between;">
+          <div style="font-weight:900;">Alien Text</div>
+          <div class="controls">
+            <button class="btn" id="copyAlien">Copy</button>
+            <button class="btn" id="clearAlien">Clear</button>
+          </div>
+        </div>
+        <div style="height:10px"></div>
+        <textarea id="alien" placeholder="Alien output/input appears here…"></textarea>
+      </section>
+    </div>
+
+    <div class="row">
+      <section class="card">
+        <div class="controls" style="justify-content:space-between;">
+          <div style="font-weight:900;">Controls</div>
+          <div class="small" id="ctx">Context: …</div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="grid2">
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="encode">Encode</option>
+              <option value="decode">Decode</option>
+            </select>
+          </div>
+          <div>
+            <label for="cipherMode">Cipher</label>
+            <select id="cipherMode">
+              <option value="standard">Standard (AES-GCM)</option>
+              <option value="double">Double-wrap (AES-GCM twice)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <label for="password">Shared password</label>
+        <input id="password" type="password" placeholder="Enter the shared password…" />
+        <div class="small" style="margin-top:6px;">
+          Anyone who knows this password can decode. Don’t embed it in the URL or page.
+        </div>
+
+        <div class="hr"></div>
+
+        <div style="font-weight:900; margin-bottom:8px;">Make it more alien</div>
+
+        <div class="grid2">
+          <div>
+            <label for="script">Alien script</label>
+            <select id="script">
+              <option value="braille64">Braille Matrix (dense)</option>
+              <option value="runePair8">Rune Pair (ritual)</option>
+              <option value="sigil64">Sigil Array (weird)</option>
+              <option value="auto">Auto (decode only)</option>
+            </select>
+            <div class="small" style="margin-top:6px;">
+              Receiver doesn’t need to pick the same one — decoder auto-detects from the text.
+            </div>
+          </div>
+          <div>
+            <label for="ornament">Ornament</label>
+            <select id="ornament">
+              <option value="0">None</option>
+              <option value="1">Light</option>
+              <option value="2">Heavy</option>
+            </select>
+            <div class="small" style="margin-top:6px;">Ornaments are visual noise; decoder strips them.</div>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <label for="iter">Password stretching (PBKDF2 iterations)</label>
+        <input id="iter" type="range" min="80000" max="600000" step="10000" />
+        <div class="small">Current: <span id="iterVal">—</span></div>
+
+        <div style="height:14px"></div>
+        <button class="btn primary" id="go">Encode →</button>
+
+        <div class="hr"></div>
+
+        <div style="font-weight:900; margin-bottom:8px;">Customize UI</div>
+        <div class="grid2">
+          <div>
+            <label for="uiName">App name</label>
+            <input id="uiName" placeholder="Alien Cipher" />
+          </div>
+          <div>
+            <label for="uiIcon">Icon (emoji)</label>
+            <input id="uiIcon" placeholder="🜁" />
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="grid2">
+          <div>
+            <label for="uiAccent">Accent</label>
+            <select id="uiAccent">
+              <option value="#e5e7eb">Silver</option>
+              <option value="#a7f3d0">Mint</option>
+              <option value="#bfdbfe">Sky</option>
+              <option value="#fecaca">Rose</option>
+              <option value="#fde68a">Gold</option>
+            </select>
+          </div>
+          <div>
+            <label for="uiCardAlpha">Card transparency</label>
+            <input id="uiCardAlpha" type="range" min="0.05" max="0.22" step="0.01" />
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="controls">
+          <button class="btn" id="uiExport">Export settings</button>
+          <button class="btn" id="uiImport">Import settings</button>
+          <button class="btn" id="uiReset">Reset</button>
+        </div>
+
+        <textarea id="uiBlob" style="height:90px; margin-top:10px;" placeholder="(Export/import JSON appears here)"></textarea>
+
+        <div class="small" style="margin-top:10px;">
+          Want a URL others can open? Host this HTML on GitHub Pages and share the link. Everyone uses the same password to decode messages.
+        </div>
+      </section>
+
+      <section class="card">
+        <div style="font-weight:900; margin-bottom:8px;">How sharing works</div>
+        <div class="small">
+          <ol style="margin:0; padding-left:18px;">
+            <li>You encode a message → share the <b>alien text</b> with coworkers.</li>
+            <li>They open the same app (same URL) → paste alien text → enter the <b>same password</b> → decode.</li>
+            <li>All encryption/decryption happens locally in the browser (no server needed).</li>
+          </ol>
+          <div style="margin-top:10px;">
+            <b>Double-wrap</b> makes ciphertext even harder to attack, but it’s slower.
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+/* ---------------- UI persistence ---------------- */
+const UI_KEY="ac:ui2";
+const UI_DEFAULT={
+  name:"Alien Cipher",
+  icon:"🜁",
+  tagline:"Password-only encryption. Anyone with the same password can decode the alien text.",
+  accent:"#e5e7eb",
+  cardAlpha:0.08
+};
+function loadUi(){ try{ return {...UI_DEFAULT, ...(JSON.parse(localStorage.getItem(UI_KEY)||"{}"))}; }catch{ return {...UI_DEFAULT}; } }
+function saveUi(cfg){ localStorage.setItem(UI_KEY, JSON.stringify(cfg)); }
+function setFaviconFromEmoji(emoji){
+  const c=document.createElement("canvas"); c.width=64; c.height=64;
+  const ctx=c.getContext("2d");
+  ctx.font="48px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(emoji||"🜁", 32, 36);
+  let link=document.querySelector('link[rel="icon"]');
+  if(!link){ link=document.createElement("link"); link.rel="icon"; document.head.appendChild(link); }
+  link.href=c.toDataURL("image/png");
+}
+function applyUi(cfg){
+  document.body.style.setProperty("--accent", cfg.accent);
+  document.body.style.setProperty("--cardAlpha", String(cfg.cardAlpha));
+  document.getElementById("appName").textContent = cfg.name;
+  document.getElementById("appIcon").textContent = cfg.icon || "🜁";
+  document.getElementById("appTagline").textContent = cfg.tagline || UI_DEFAULT.tagline;
+  document.title = cfg.name || "Alien Cipher";
+  setFaviconFromEmoji(cfg.icon||"🜁");
+}
+
+/* ---------------- Helpers ---------------- */
+const te=new TextEncoder(), td=new TextDecoder();
+function randBytes(n){ const u8=new Uint8Array(n); crypto.getRandomValues(u8); return u8; }
+function concatBytes(...chunks){ const total=chunks.reduce((s,c)=>s+c.length,0); const out=new Uint8Array(total); let o=0; for(const c of chunks){ out.set(c,o); o+=c.length; } return out; }
+function u32be(n){ const b=new Uint8Array(4); b[0]=(n>>>24)&255; b[1]=(n>>>16)&255; b[2]=(n>>>8)&255; b[3]=n&255; return b; }
+function readU32be(bytes,off){ return (((bytes[off]<<24)|(bytes[off+1]<<16)|(bytes[off+2]<<8)|bytes[off+3])>>>0); }
+function bytesToBase64(bytes){ let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); }
+function base64ToBytes(b64){ const bin=atob(b64); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
+async function copyText(t){ await navigator.clipboard.writeText(t); }
+
+function toast(msg,type=""){
+  const t=document.getElementById("toast");
+  t.className="toast "+(type==="err"?"err":type==="ok"?"ok":"");
+  t.textContent=msg; t.style.display="block";
+  clearTimeout(window.__toastT);
+  window.__toastT=setTimeout(()=>t.style.display="none", 3200);
+}
+
+/* ---------------- Crypto (password-only) ---------------- */
+const SALT_LEN=16, IV_LEN=12;
+async function deriveAesKeyFromPassword(password, salt, iterations){
+  const baseKey = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", hash:"SHA-256", salt, iterations },
+    baseKey,
+    { name:"AES-GCM", length:256 },
+    false,
+    ["encrypt","decrypt"]
+  );
+}
+
+/* ---------------- Payload (v2, supports double-wrap) ----------------
+   Format:
+   magic 'AC2\0' [4]
+   flags [1] bit0=doubleWrap
+   iter [4]
+   saltLen [1] salt [saltLen]
+   ivLen [1] iv [ivLen]
+   ciphertext [rest]
+*/
+const MAGIC = new Uint8Array([0x41,0x43,0x32,0x00]); // 'AC2\0'
+function startsWithMagic(b){
+  if (b.length < 4) return false;
+  for(let i=0;i<4;i++) if (b[i]!==MAGIC[i]) return false;
+  return true;
+}
+function packPayload(flags, iter, salt, iv, ciphertext){
+  return concatBytes(
+    MAGIC,
+    new Uint8Array([flags]),
+    u32be(iter),
+    new Uint8Array([salt.length]),
+    salt,
+    new Uint8Array([iv.length]),
+    iv,
+    ciphertext
+  );
+}
+function unpackPayload(bytes){
+  if (!startsWithMagic(bytes)) throw new Error("Not an Alien Cipher v2 payload");
+  let off=4;
+  const flags=bytes[off]; off+=1;
+  const iter=readU32be(bytes, off); off+=4;
+  const saltLen=bytes[off]; off+=1;
+  const salt=bytes.slice(off, off+saltLen); off+=saltLen;
+  const ivLen=bytes[off]; off+=1;
+  const iv=bytes.slice(off, off+ivLen); off+=ivLen;
+  const ciphertext=bytes.slice(off);
+  return { flags, iter, salt, iv, ciphertext };
+}
+
+/* ---------------- Alien scripts ---------------- */
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const ORNAMENT_MARKS = ["\u0301","\u0307","\u0308","\u030A","\u030D","\u0310","\u0336","\u0338","\u034F"]; // combining marks
+const NOISE = ["⟐","⟠","⧖","⧗","⟡","⟣","⟤","⟬","⟭","⋇","⋈","⋉","⋊","⋋","⋌","⋍","⋎","⋏","⋒","⋓","⋔"];
+const SEP = [" "," · "," ᛫ "," ︙ ","\n"];
+
+function stripOrnaments(s){
+  return s.normalize("NFKD").replace(/[\u0300-\u036f]/g,"");
+}
+function decorateGlyph(g, level){
+  if (level<=0) return g;
+  const n = level===1 ? (Math.random()<0.35?1:0) : (Math.random()<0.65?1:0) + (Math.random()<0.35?1:0);
+  let out=g;
+  for(let i=0;i<n;i++) out += ORNAMENT_MARKS[Math.floor(Math.random()*ORNAMENT_MARKS.length)];
+  return out;
+}
+function maybeNoise(level){
+  if (level<=0) return "";
+  const p = level===1 ? 0.10 : 0.22;
+  if (Math.random() < p) return NOISE[Math.floor(Math.random()*NOISE.length)];
+  return "";
+}
+function maybeSep(i, level){
+  if (level<=0) return (i%40===39) ? "\n" : (i%10===9 ? " " : "");
+  if (level===1) return (i%28===27) ? "\n" : (i%7===6 ? SEP[Math.floor(Math.random()*SEP.length)] : "");
+  return (i%18===17) ? "\n" : (i%4===3 ? SEP[Math.floor(Math.random()*SEP.length)] : "");
+}
+
+// Script A: Braille64 (U+2800..U+283F) + pad U+28FF
+const PAD_BRAILLE = String.fromCharCode(0x28FF);
+function idxToBraille(i){ return String.fromCharCode(0x2800 + i); }
+function brailleToIdx(ch){
+  const cp = ch.codePointAt(0);
+  if (cp===0x28FF) return -2; // pad
+  if (cp>=0x2800 && cp<=0x283F) return cp-0x2800;
+  return -1;
+}
+
+// Script B: RunePair8
+const GLYPH8 = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ"];
+const PAD_RUNE = "ᛝ";
+function idxToRunePair(i){ return GLYPH8[(i>>3)&7] + GLYPH8[i&7]; }
+function runePairToIdx(a,b){
+  if (a===PAD_RUNE && b===PAD_RUNE) return -2;
+  const hi = GLYPH8.indexOf(a), lo = GLYPH8.indexOf(b);
+  if (hi<0 || lo<0) return -1;
+  return (hi<<3)|lo;
+}
+
+// Script C: Sigil64 (handpicked) + pad
+const SIGIL64 = [
+  "⟐","⟑","⟒","⟓","⟔","⟕","⟖","⟗",
+  "⟘","⟙","⟚","⟛","⟜","⟝","⟞","⟟",
+  "⟠","⟡","⟢","⟣","⟤","⟥","⟦","⟧",
+  "⟨","⟩","⟪","⟫","⟬","⟭","⟮","⟯",
+  "⌁","⌂","⌃","⌄","⌅","⌆","⌇","⌈",
+  "⌉","⌊","⌋","⌌","⌍","⌎","⌏","⌐",
+  "⌑","⌒","⌓","⌔","⌕","⌖","⌗","⌘",
+  "⌙","⌚","⌛","⌜","⌝","⌞","⌟","⌠"
+];
+const PAD_SIGIL = "⌡";
+function idxToSigil(i){ return SIGIL64[i]; }
+function sigilToIdx(ch){
+  if (ch===PAD_SIGIL) return -2;
+  const idx = SIGIL64.indexOf(ch);
+  return idx>=0 ? idx : -1;
+}
+
+function detectScript(alienText){
+  const s = stripOrnaments(alienText);
+  let bra=0, rune=0, sig=0;
+  for (const ch of s){
+    const cp = ch.codePointAt(0);
+    if ((cp>=0x2800 && cp<=0x28FF)) bra++;
+    if (GLYPH8.includes(ch) || ch===PAD_RUNE) rune++;
+    if (SIGIL64.includes(ch) || ch===PAD_SIGIL) sig++;
+  }
+  const max = Math.max(bra,rune,sig);
+  if (max===0) return "unknown";
+  if (max===bra) return "braille64";
+  if (max===rune) return "runePair8";
+  return "sigil64";
+}
+
+function b64ToIndices(b64){
+  const out=[];
+  for(const ch of b64){
+    if (ch==="=") out.push(-2);
+    else out.push(B64.indexOf(ch));
+  }
+  return out;
+}
+function indicesToB64(indices){
+  let b64="";
+  for(const idx of indices){
+    if (idx===-2) b64+="=";
+    else b64+=B64[idx];
+  }
+  return b64;
+}
+
+function alienify(b64, script, ornamentLevel){
+  const idxs = b64ToIndices(b64);
+  let out="";
+  for(let i=0;i<idxs.length;i++){
+    const idx = idxs[i];
+    let glyph="";
+    if (script==="braille64"){
+      glyph = (idx===-2) ? PAD_BRAILLE : idxToBraille(idx);
+    } else if (script==="sigil64"){
+      glyph = (idx===-2) ? PAD_SIGIL : idxToSigil(idx);
+    } else {
+      glyph = (idx===-2) ? (PAD_RUNE+PAD_RUNE) : idxToRunePair(idx);
+    }
+    out += maybeNoise(ornamentLevel);
+    out += decorateGlyph(glyph, ornamentLevel);
+    out += maybeSep(i, ornamentLevel);
+  }
+  return "⟦" + out.trim() + "⟧";
+}
+
+function deAlienifyToB64(alienText){
+  const clean = stripOrnaments(alienText);
+  const script = detectScript(clean);
+  if (script==="unknown") throw new Error("Can't detect alien script. (Try pasting only the alien text body.)");
+
+  if (script==="runePair8"){
+    const allowed = new Set([...GLYPH8, PAD_RUNE]);
+    const glyphs = Array.from(clean).filter(c=>allowed.has(c));
+    if (glyphs.length % 2 !== 0) throw new Error("Rune text corrupted (odd glyph count)");
+    const idxs=[];
+    for(let i=0;i<glyphs.length;i+=2){
+      const idx = runePairToIdx(glyphs[i], glyphs[i+1]);
+      if (idx<0) throw new Error("Rune decode failed");
+      idxs.push(idx);
+    }
+    return indicesToB64(idxs);
+  }
+
+  if (script==="braille64"){
+    const glyphs = Array.from(clean).filter(ch=>{
+      const cp=ch.codePointAt(0);
+      return (cp>=0x2800 && cp<=0x28FF);
+    });
+    const idxs=[];
+    for(const ch of glyphs){
+      const idx = brailleToIdx(ch);
+      if (idx===-1) continue;
+      idxs.push(idx);
+    }
+    return indicesToB64(idxs);
+  }
+
+  const glyphs = Array.from(clean).filter(ch => SIGIL64.includes(ch) || ch===PAD_SIGIL);
+  const idxs=[];
+  for(const ch of glyphs){
+    const idx = sigilToIdx(ch);
+    if (idx<0) continue;
+    idxs.push(idx);
+  }
+  return indicesToB64(idxs);
+}
+
+/* ---------------- App logic ---------------- */
+const el=(id)=>document.getElementById(id);
+const plainEl=el("plain");
+const alienEl=el("alien");
+const passwordEl=el("password");
+const modeEl=el("mode");
+const cipherModeEl=el("cipherMode");
+const scriptEl=el("script");
+const ornamentEl=el("ornament");
+const iterEl=el("iter");
+const iterValEl=el("iterVal");
+const goEl=el("go");
+const ctxEl=el("ctx");
+
+let busy=false;
+function setBusy(b){ busy=b; goEl.disabled=b; }
+function updateGo(){ goEl.textContent = (modeEl.value==="encode") ? "Encode →" : "Decode →"; }
+modeEl.onchange = updateGo;
+
+function setIterDisplay(){ iterValEl.textContent = Number(iterEl.value).toLocaleString(); }
+iterEl.oninput = setIterDisplay;
+
+async function encryptOnce(dataBytes, password, iterations){
+  const salt = randBytes(SALT_LEN);
+  const key = await deriveAesKeyFromPassword(password, salt, iterations);
+  const iv = randBytes(IV_LEN);
+  const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, dataBytes);
+  return { salt, iv, ct: new Uint8Array(ctBuf) };
+}
+
+async function decryptOnce(payloadBytes, password){
+  const p = unpackPayload(payloadBytes);
+  const key = await deriveAesKeyFromPassword(password, p.salt, p.iter);
+  const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv:p.iv}, key, p.ciphertext);
+  return { flags: p.flags, plaintextBytes: new Uint8Array(ptBuf) };
+}
+
+async function doEncode(){
+  const plain = plainEl.value;
+  const pw = passwordEl.value;
+  if (!plain.trim()) return toast("Type a message to encode.", "err");
+  if (!pw) return toast("Enter the shared password.", "err");
+
+  setBusy(true);
+  try{
+    const iter = Number(iterEl.value);
+    const ornamentLevel = Number(ornamentEl.value);
+    const script = scriptEl.value === "auto" ? "braille64" : scriptEl.value;
+
+    let payloadBytes;
+
+    if (cipherModeEl.value === "double"){
+      // Inner payload (flags=0)
+      const innerEnc = await encryptOnce(te.encode(plain), pw, iter);
+      const innerPayload = packPayload(0, iter, innerEnc.salt, innerEnc.iv, innerEnc.ct);
+
+      // Outer payload (flags=1)
+      const outerEnc = await encryptOnce(innerPayload, pw, iter);
+      payloadBytes = packPayload(1, iter, outerEnc.salt, outerEnc.iv, outerEnc.ct);
+    } else {
+      const enc = await encryptOnce(te.encode(plain), pw, iter);
+      payloadBytes = packPayload(0, iter, enc.salt, enc.iv, enc.ct);
+    }
+
+    const b64 = bytesToBase64(payloadBytes);
+    alienEl.value = alienify(b64, script, ornamentLevel);
+    toast("Encoded.", "ok");
+  } catch(e){
+    toast(e?.message || String(e), "err");
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function doDecode(){
+  const pw = passwordEl.value;
+  if (!alienEl.value.trim()) return toast("Paste alien text to decode.", "err");
+  if (!pw) return toast("Enter the shared password.", "err");
+
+  setBusy(true);
+  try{
+    const b64 = deAlienifyToB64(alienEl.value);
+    const bytes = base64ToBytes(b64);
+
+    const first = await decryptOnce(bytes, pw);
+    if ((first.flags & 1) === 1){
+      const second = await decryptOnce(first.plaintextBytes, pw);
+      plainEl.value = td.decode(second.plaintextBytes);
+    } else {
+      plainEl.value = td.decode(first.plaintextBytes);
+    }
+
+    toast("Decoded.", "ok");
+  } catch(e){
+    toast((e?.message || String(e)) + "\n\nIf the password is wrong, decryption fails (by design).", "err");
+  } finally {
+    setBusy(false);
+  }
+}
+
+goEl.onclick = async ()=> {
+  if (busy) return;
+  if (modeEl.value==="encode") await doEncode();
+  else await doDecode();
+};
+
+document.getElementById("copyPlain").onclick = async ()=>{ if(plainEl.value){ await copyText(plainEl.value); toast("Copied plaintext.", "ok"); } };
+document.getElementById("copyAlien").onclick = async ()=>{ if(alienEl.value){ await copyText(alienEl.value); toast("Copied alien text.", "ok"); } };
+document.getElementById("clearPlain").onclick = ()=> plainEl.value="";
+document.getElementById("clearAlien").onclick = ()=> alienEl.value="";
+
+/* ---- Customize UI controls ---- */
+const uiName=el("uiName"), uiIcon=el("uiIcon"), uiAccent=el("uiAccent"), uiCardAlpha=el("uiCardAlpha");
+const uiExport=el("uiExport"), uiImport=el("uiImport"), uiReset=el("uiReset"), uiBlob=el("uiBlob");
+
+let ui = loadUi();
+applyUi(ui);
+
+function syncUiInputs(){
+  uiName.value = ui.name;
+  uiIcon.value = ui.icon;
+  uiAccent.value = ui.accent;
+  uiCardAlpha.value = String(ui.cardAlpha);
+}
+function updateUi(partial){
+  ui = {...ui, ...partial};
+  saveUi(ui);
+  applyUi(ui);
+  syncUiInputs();
+}
+uiName.oninput = ()=> updateUi({name: uiName.value || UI_DEFAULT.name});
+uiIcon.oninput = ()=> updateUi({icon: uiIcon.value || UI_DEFAULT.icon});
+uiAccent.onchange = ()=> updateUi({accent: uiAccent.value});
+uiCardAlpha.oninput = ()=> updateUi({cardAlpha: Number(uiCardAlpha.value)});
+
+uiExport.onclick = ()=>{ uiBlob.value = JSON.stringify(ui, null, 2); toast("Exported settings (copy JSON).","ok"); };
+uiImport.onclick = ()=>{
+  try{ const parsed = JSON.parse(uiBlob.value||"{}"); updateUi(parsed); toast("Imported settings.","ok"); }
+  catch{ toast("Invalid JSON.","err"); }
+};
+uiReset.onclick = ()=>{ ui={...UI_DEFAULT}; saveUi(ui); applyUi(ui); syncUiInputs(); uiBlob.value=""; toast("Reset.","ok"); };
+
+function init(){
+  updateGo();
+  iterEl.value = String(220000);
+  setIterDisplay();
+  syncUiInputs();
+  ctxEl.textContent = `Context: ${location.protocol}//${location.host || "(local file)"}`;
+}
+init();
+</script>
+</body>
+</html>
