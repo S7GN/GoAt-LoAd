@@ -1,4 +1,7 @@
-<!doctype html>
+from pathlib import Path
+import zipfile, re
+
+html = r"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -71,6 +74,7 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media(max-width:520px){.grid2{grid-template-columns:1fr}}
     code{background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:10px}
+    .hintbox{border:1px dashed rgba(255,255,255,0.18);border-radius:16px;padding:10px 12px;background:rgba(0,0,0,0.18)}
   </style>
 </head>
 
@@ -85,7 +89,7 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <span class="pill">AES-GCM</span>
           <span class="pill">PBKDF2</span>
-          <span class="pill">Alien Scripts</span>
+          <span class="pill">Share-safe Backup</span>
         </div>
       </div>
     </header>
@@ -113,6 +117,9 @@
         </div>
         <div style="height:10px"></div>
         <textarea id="alien" placeholder="Alien output/input appears here…"></textarea>
+        <div class="small" style="margin-top:8px;">
+          Tip: some chat apps strip “fancy” Unicode. If that happens, keep the backup line that starts with <code>AC2:</code>.
+        </div>
       </section>
     </div>
 
@@ -158,9 +165,9 @@
           <div>
             <label for="script">Alien script</label>
             <select id="script">
-              <option value="braille64">Braille Matrix (dense)</option>
+              <option value="braille64">Braille Matrix (most copy-safe)</option>
               <option value="runePair8">Rune Pair (ritual)</option>
-              <option value="sigil64">Sigil Array (weird)</option>
+              <option value="sigil64">Sigil Array (may break in some chats)</option>
               <option value="auto">Auto (decode only)</option>
             </select>
             <div class="small" style="margin-top:6px;">
@@ -184,6 +191,19 @@
         <input id="iter" type="range" min="80000" max="600000" step="10000" />
         <div class="small">Current: <span id="iterVal">—</span></div>
 
+        <div class="hr"></div>
+
+        <div style="font-weight:900; margin-bottom:8px;">Sharing</div>
+        <div class="hintbox small">
+          <label style="display:flex;gap:10px;align-items:center;margin:0;">
+            <input id="includeBackup" type="checkbox" style="width:auto" />
+            Include share-safe backup line (<code>AC2:...</code>) in the output
+          </label>
+          <div style="margin-top:6px;">
+            If your chat strips symbols/“emojis”, the <code>AC2:</code> line (ASCII-only) will still decode.
+          </div>
+        </div>
+
         <div style="height:14px"></div>
         <button class="btn primary" id="go">Encode →</button>
 
@@ -198,6 +218,9 @@
           <div>
             <label for="uiIcon">Icon (emoji)</label>
             <input id="uiIcon" placeholder="🜁" />
+            <div class="small" style="margin-top:6px;">
+              This is only UI. If some apps don’t preserve emoji, it won’t affect decoding (decoding uses the alien text / AC2 line).
+            </div>
           </div>
         </div>
 
@@ -227,23 +250,17 @@
         </div>
 
         <textarea id="uiBlob" style="height:90px; margin-top:10px;" placeholder="(Export/import JSON appears here)"></textarea>
-
-        <div class="small" style="margin-top:10px;">
-          Want a URL others can open? Host this HTML on GitHub Pages and share the link. Everyone uses the same password to decode messages.
-        </div>
       </section>
 
       <section class="card">
-        <div style="font-weight:900; margin-bottom:8px;">How sharing works</div>
+        <div style="font-weight:900; margin-bottom:8px;">Why decoding sometimes breaks when you copy</div>
         <div class="small">
-          <ol style="margin:0; padding-left:18px;">
-            <li>You encode a message → share the <b>alien text</b> with coworkers.</li>
-            <li>They open the same app (same URL) → paste alien text → enter the <b>same password</b> → decode.</li>
-            <li>All encryption/decryption happens locally in the browser (no server needed).</li>
-          </ol>
-          <div style="margin-top:10px;">
-            <b>Double-wrap</b> makes ciphertext even harder to attack, but it’s slower.
+          Some apps “sanitize” text and remove/replace certain Unicode symbols. That can destroy the alien glyph stream.<br/><br/>
+          This update fixes it by adding an optional <b>ASCII-only backup</b> line:
+          <div style="margin-top:8px;">
+            <code>AC2:...base64url...</code>
           </div>
+          If the glyphs get mangled, the receiver can paste the whole message (or just the AC2 line) and decode normally.
         </div>
       </section>
     </div>
@@ -259,7 +276,12 @@ const UI_DEFAULT={
   icon:"🜁",
   tagline:"Password-only encryption. Anyone with the same password can decode the alien text.",
   accent:"#e5e7eb",
-  cardAlpha:0.08
+  cardAlpha:0.08,
+  includeBackup:true,
+  scriptDefault:"braille64",
+  ornamentDefault:"1",
+  iterDefault:220000,
+  cipherDefault:"standard"
 };
 function loadUi(){ try{ return {...UI_DEFAULT, ...(JSON.parse(localStorage.getItem(UI_KEY)||"{}"))}; }catch{ return {...UI_DEFAULT}; } }
 function saveUi(cfg){ localStorage.setItem(UI_KEY, JSON.stringify(cfg)); }
@@ -290,6 +312,14 @@ function u32be(n){ const b=new Uint8Array(4); b[0]=(n>>>24)&255; b[1]=(n>>>16)&2
 function readU32be(bytes,off){ return (((bytes[off]<<24)|(bytes[off+1]<<16)|(bytes[off+2]<<8)|bytes[off+3])>>>0); }
 function bytesToBase64(bytes){ let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); }
 function base64ToBytes(b64){ const bin=atob(b64); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
+function bytesToBase64Url(bytes){
+  return bytesToBase64(bytes).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+}
+function base64UrlToBytes(s){
+  const b64 = s.replace(/-/g,"+").replace(/_/g,"/");
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  return base64ToBytes(b64 + pad);
+}
 async function copyText(t){ await navigator.clipboard.writeText(t); }
 
 function toast(msg,type=""){
@@ -314,7 +344,6 @@ async function deriveAesKeyFromPassword(password, salt, iterations){
 }
 
 /* ---------------- Payload (v2, supports double-wrap) ----------------
-   Format:
    magic 'AC2\0' [4]
    flags [1] bit0=doubleWrap
    iter [4]
@@ -477,7 +506,7 @@ function alienify(b64, script, ornamentLevel){
 function deAlienifyToB64(alienText){
   const clean = stripOrnaments(alienText);
   const script = detectScript(clean);
-  if (script==="unknown") throw new Error("Can't detect alien script. (Try pasting only the alien text body.)");
+  if (script==="unknown") throw new Error("Can't detect alien script.");
 
   if (script==="runePair8"){
     const allowed = new Set([...GLYPH8, PAD_RUNE]);
@@ -527,6 +556,7 @@ const scriptEl=el("script");
 const ornamentEl=el("ornament");
 const iterEl=el("iter");
 const iterValEl=el("iterVal");
+const includeBackupEl = el("includeBackup");
 const goEl=el("go");
 const ctxEl=el("ctx");
 
@@ -553,6 +583,18 @@ async function decryptOnce(payloadBytes, password){
   return { flags: p.flags, plaintextBytes: new Uint8Array(ptBuf) };
 }
 
+function extractBackupCode(text){
+  // Accept:
+  // - AC2:xxxx
+  // - ac2:xxxx
+  // - just xxxx (base64url) if it looks like it
+  const m = text.match(/(?:^|\s)AC2:([A-Za-z0-9\-_]{20,})(?:\s|$)/i);
+  if (m) return m[1];
+  const trimmed = text.trim();
+  if (/^[A-Za-z0-9\-_]{60,}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 async function doEncode(){
   const plain = plainEl.value;
   const pw = passwordEl.value;
@@ -568,11 +610,8 @@ async function doEncode(){
     let payloadBytes;
 
     if (cipherModeEl.value === "double"){
-      // Inner payload (flags=0)
       const innerEnc = await encryptOnce(te.encode(plain), pw, iter);
       const innerPayload = packPayload(0, iter, innerEnc.salt, innerEnc.iv, innerEnc.ct);
-
-      // Outer payload (flags=1)
       const outerEnc = await encryptOnce(innerPayload, pw, iter);
       payloadBytes = packPayload(1, iter, outerEnc.salt, outerEnc.iv, outerEnc.ct);
     } else {
@@ -581,7 +620,13 @@ async function doEncode(){
     }
 
     const b64 = bytesToBase64(payloadBytes);
-    alienEl.value = alienify(b64, script, ornamentLevel);
+    const b64url = bytesToBase64Url(payloadBytes);
+
+    const glyphs = alienify(b64, script, ornamentLevel);
+    alienEl.value = includeBackupEl.checked
+      ? (glyphs + "\n\nAC2:" + b64url)
+      : glyphs;
+
     toast("Encoded.", "ok");
   } catch(e){
     toast(e?.message || String(e), "err");
@@ -597,8 +642,17 @@ async function doDecode(){
 
   setBusy(true);
   try{
-    const b64 = deAlienifyToB64(alienEl.value);
-    const bytes = base64ToBytes(b64);
+    // 1) If backup exists, prefer it (most reliable)
+    const backup = extractBackupCode(alienEl.value);
+    let bytes;
+
+    if (backup){
+      bytes = base64UrlToBytes(backup);
+    } else {
+      // 2) Try glyph decode
+      const b64 = deAlienifyToB64(alienEl.value);
+      bytes = base64ToBytes(b64);
+    }
 
     const first = await decryptOnce(bytes, pw);
     if ((first.flags & 1) === 1){
@@ -610,7 +664,7 @@ async function doDecode(){
 
     toast("Decoded.", "ok");
   } catch(e){
-    toast((e?.message || String(e)) + "\n\nIf the password is wrong, decryption fails (by design).", "err");
+    toast((e?.message || String(e)) + "\n\nIf your chat mangled the glyphs, include the AC2: line when sharing.", "err");
   } finally {
     setBusy(false);
   }
@@ -639,6 +693,13 @@ function syncUiInputs(){
   uiIcon.value = ui.icon;
   uiAccent.value = ui.accent;
   uiCardAlpha.value = String(ui.cardAlpha);
+  includeBackupEl.checked = !!ui.includeBackup;
+  // defaults for alien options (per user)
+  scriptEl.value = ui.scriptDefault || "braille64";
+  ornamentEl.value = String(ui.ornamentDefault ?? "1");
+  cipherModeEl.value = ui.cipherDefault || "standard";
+  iterEl.value = String(ui.iterDefault || 220000);
+  setIterDisplay();
 }
 function updateUi(partial){
   ui = {...ui, ...partial};
@@ -651,6 +712,12 @@ uiIcon.oninput = ()=> updateUi({icon: uiIcon.value || UI_DEFAULT.icon});
 uiAccent.onchange = ()=> updateUi({accent: uiAccent.value});
 uiCardAlpha.oninput = ()=> updateUi({cardAlpha: Number(uiCardAlpha.value)});
 
+includeBackupEl.onchange = ()=> updateUi({ includeBackup: includeBackupEl.checked });
+scriptEl.onchange = ()=> updateUi({ scriptDefault: scriptEl.value });
+ornamentEl.onchange = ()=> updateUi({ ornamentDefault: ornamentEl.value });
+cipherModeEl.onchange = ()=> updateUi({ cipherDefault: cipherModeEl.value });
+iterEl.onchange = ()=> updateUi({ iterDefault: Number(iterEl.value) });
+
 uiExport.onclick = ()=>{ uiBlob.value = JSON.stringify(ui, null, 2); toast("Exported settings (copy JSON).","ok"); };
 uiImport.onclick = ()=>{
   try{ const parsed = JSON.parse(uiBlob.value||"{}"); updateUi(parsed); toast("Imported settings.","ok"); }
@@ -660,8 +727,6 @@ uiReset.onclick = ()=>{ ui={...UI_DEFAULT}; saveUi(ui); applyUi(ui); syncUiInput
 
 function init(){
   updateGo();
-  iterEl.value = String(220000);
-  setIterDisplay();
   syncUiInputs();
   ctxEl.textContent = `Context: ${location.protocol}//${location.host || "(local file)"}`;
 }
@@ -669,3 +734,32 @@ init();
 </script>
 </body>
 </html>
+"""
+
+out_dir = Path("/mnt/data/alien-cipher-update")
+out_dir.mkdir(parents=True, exist_ok=True)
+index_path = out_dir / "index.html"
+index_path.write_text(html, encoding="utf-8")
+
+readme = """# Alien Cipher (GitHub Pages update)
+
+This is a single-file, password-only alien encoder/decoder.
+
+## What's new in this update
+- Adds a share-safe ASCII backup line: `AC2:...` (base64url)
+- Decoder automatically uses the AC2 line if present (so chats that strip Unicode won't break decoding)
+- Defaults to the "Braille Matrix" script (most copy-safe)
+- Each user still has their own UI/theme settings (saved locally in their browser)
+
+## Deploy (update existing link)
+Replace your repo's `index.html` with this one and commit to `main`.
+GitHub Pages will redeploy automatically (same URL).
+"""
+(out_dir / "README.md").write_text(readme, encoding="utf-8")
+
+zip_path = Path("/mnt/data/alien-cipher-pages-update.zip")
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+    z.write(index_path, arcname="index.html")
+    z.write(out_dir / "README.md", arcname="README.md")
+
+str(zip_path)
