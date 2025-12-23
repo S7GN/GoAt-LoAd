@@ -1,5 +1,5 @@
 from pathlib import Path
-import zipfile
+import zipfile, re
 
 html = r"""<!doctype html>
 <html lang="en">
@@ -18,8 +18,6 @@ html = r"""<!doctype html>
                  linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
       --accent:#e5e7eb;
       --cardAlpha:0.08;
-      --text:#e5e7eb;
-      --muted: rgba(229,231,235,0.78);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       margin:0; padding:20px;
       background-color:var(--bg);
@@ -27,16 +25,11 @@ html = r"""<!doctype html>
       background-size:cover;
       background-position:center;
       background-attachment:fixed;
-      color:var(--text);
+      color:#e5e7eb;
     }
-    body.paper{
-      --text:#0b1220;
-      --muted: rgba(11,18,32,0.72);
-    }
-
-    .wrap{max-width:1180px;margin:0 auto;display:grid;gap:14px}
+    .wrap{max-width:1100px;margin:0 auto;display:grid;gap:14px}
     .row{display:grid;gap:14px;grid-template-columns:1fr}
-    @media(min-width:980px){.row{grid-template-columns:1fr 1fr}}
+    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
     .card{
       background:rgba(255,255,255,var(--cardAlpha));
       border:1px solid rgba(255,255,255,0.12);
@@ -46,42 +39,30 @@ html = r"""<!doctype html>
       backdrop-filter: blur(6px);
     }
     h1{margin:0 0 6px;font-size:20px;display:flex;align-items:center;gap:10px}
-    p{margin:0;color:var(--muted)}
-    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    p{margin:0;color:rgba(229,231,235,0.85)}
+    label{font-size:12px;color:rgba(229,231,235,0.85);display:block;margin-bottom:6px}
     textarea,input,select{
       width:100%;box-sizing:border-box;border-radius:14px;
       border:1px solid rgba(255,255,255,0.16);
       background:rgba(0,0,0,0.30);
-      color:var(--text);
+      color:#e5e7eb;
       padding:10px 12px;outline:none;
     }
-    body.paper textarea, body.paper input, body.paper select{
-      background:rgba(255,255,255,0.55);
-      border-color: rgba(0,0,0,0.12);
-      color: #0b1220;
-    }
-    textarea{height:270px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.35}
+    textarea{height:260px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.35}
     .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .btn{
       border:1px solid rgba(255,255,255,0.16);
       background:rgba(255,255,255,0.08);
-      color:var(--text);
+      color:#e5e7eb;
       padding:10px 12px;border-radius:14px;cursor:pointer;font-weight:800
     }
-    body.paper .btn{
-      border-color: rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.65);
-      color: #0b1220;
-    }
     .btn.primary{background:var(--accent);color:#070a14;border-color:rgba(255,255,255,0.25)}
-    .btn.danger{border-color: rgba(244,63,94,0.5); background: rgba(244,63,94,0.10); }
     .btn:disabled{opacity:0.5;cursor:not-allowed}
-    .pill{font-size:12px;padding:4px 10px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;color:rgba(229,231,235,0.92)}
-    body.paper .pill{border-color: rgba(0,0,0,0.14); color: rgba(11,18,32,0.85);}
-    .small{font-size:12px;color:var(--muted);line-height:1.45}
+    .pill{font-size:12px;padding:4px 10px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;color:rgba(229,231,235,0.9)}
+    .small{font-size:12px;color:rgba(229,231,235,0.75);line-height:1.45}
     .toast{
       position:fixed;left:50%;transform:translateX(-50%);
-      bottom:18px;width:min(92vw,960px);padding:12px 14px;border-radius:16px;
+      bottom:18px;width:min(92vw,880px);padding:12px 14px;border-radius:16px;
       border:1px solid rgba(255,255,255,0.16);
       background:rgba(0,0,0,0.72);
       box-shadow:0 18px 40px rgba(0,0,0,0.5);
@@ -91,43 +72,9 @@ html = r"""<!doctype html>
     .ok{border-color:rgba(34,197,94,0.60);background:rgba(34,197,94,0.12)}
     .hr{height:1px;background:rgba(255,255,255,0.14);margin:12px 0;border-radius:999px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+    @media(max-width:520px){.grid2{grid-template-columns:1fr}}
     code{background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:10px}
-    body.paper code{background: rgba(0,0,0,0.08);}
     .hintbox{border:1px dashed rgba(255,255,255,0.18);border-radius:16px;padding:10px 12px;background:rgba(0,0,0,0.18)}
-    body.paper .hintbox{border-color: rgba(0,0,0,0.18); background: rgba(255,255,255,0.55);}
-
-    .drop{
-      border:1px dashed rgba(255,255,255,0.22);
-      border-radius:18px;
-      padding:14px;
-      text-align:center;
-      background:rgba(0,0,0,0.18);
-    }
-    body.paper .drop{border-color: rgba(0,0,0,0.18); background: rgba(255,255,255,0.55);}
-    .drop.drag{outline: 2px solid rgba(99,102,241,0.55);}
-    .preview{
-      display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .preview img{
-      max-width: 260px;
-      max-height: 260px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(0,0,0,0.18);
-    }
-    body.paper .preview img{ border-color: rgba(0,0,0,0.12); background: rgba(255,255,255,0.55);}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
-    .tag{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(0,0,0,0.18);
-      font-size:12px;
-      color: var(--muted);
-    }
-    body.paper .tag{border-color: rgba(0,0,0,0.14); background: rgba(255,255,255,0.55);}
   </style>
 </head>
 
@@ -137,13 +84,12 @@ html = r"""<!doctype html>
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
         <div>
           <h1><span id="appIcon" aria-hidden="true">🜁</span><span id="appName">Alien Cipher</span></h1>
-          <p id="appTagline">Text + images + GIFs. Password-only. Share as alien glyphs or an AC2 package.</p>
+          <p id="appTagline">Password-only encryption. Anyone with the same password can decode the alien text.</p>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <span class="pill">AES-GCM</span>
           <span class="pill">PBKDF2</span>
-          <span class="pill">Media</span>
-          <span class="pill">AC2 backup</span>
+          <span class="pill">Share-safe Backup</span>
         </div>
       </div>
     </header>
@@ -151,87 +97,28 @@ html = r"""<!doctype html>
     <div class="row">
       <section class="card">
         <div class="controls" style="justify-content:space-between;">
-          <div style="font-weight:900;" id="leftTitle">Input</div>
+          <div style="font-weight:900;">Plaintext</div>
           <div class="controls">
-            <button class="btn" id="copyLeft">Copy</button>
-            <button class="btn" id="clearLeft">Clear</button>
+            <button class="btn" id="copyPlain">Copy</button>
+            <button class="btn" id="clearPlain">Clear</button>
           </div>
         </div>
-
         <div style="height:10px"></div>
-
-        <div id="textInputBox">
-          <textarea id="plain" placeholder="Type your message here…"></textarea>
-        </div>
-
-        <div id="fileInputBox" style="display:none;">
-          <div class="drop" id="dropZone">
-            <div style="font-weight:900;">Drop an image/GIF/file here</div>
-            <div class="small" style="margin-top:6px;">or choose a file</div>
-            <div style="height:10px"></div>
-            <input id="filePick" type="file" />
-            <div class="small" style="margin-top:10px;">
-              For Slack: large images usually won’t fit as text. Use <b>Download AC2 package</b> and upload that file.
-            </div>
-          </div>
-
-          <div class="preview" id="filePreview" style="display:none;">
-            <img id="filePreviewImg" alt="preview" />
-            <div>
-              <div class="tag"><span>📦</span><span id="fileMeta" class="mono"></span></div>
-              <div style="height:8px"></div>
-              <button class="btn" id="clearFile">Remove file</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="decodedMediaBox" style="display:none; margin-top:10px;">
-          <div class="hr"></div>
-          <div style="font-weight:900;">Decoded media</div>
-          <div class="preview">
-            <img id="decodedImg" alt="decoded preview" />
-            <div>
-              <div class="tag"><span>✅</span><span id="decodedMeta" class="mono"></span></div>
-              <div style="height:8px"></div>
-              <a class="btn primary" id="downloadDecoded" download>Download</a>
-              <button class="btn" id="clearDecoded">Clear preview</button>
-            </div>
-          </div>
-        </div>
-
+        <textarea id="plain" placeholder="Type your message here…"></textarea>
       </section>
 
       <section class="card">
         <div class="controls" style="justify-content:space-between;">
-          <div style="font-weight:900;">Alien Message</div>
+          <div style="font-weight:900;">Alien Text</div>
           <div class="controls">
             <button class="btn" id="copyAlien">Copy</button>
-            <button class="btn" id="copySlack">Copy for Slack</button>
-            <button class="btn danger" id="clearAlien">Clear</button>
+            <button class="btn" id="clearAlien">Clear</button>
           </div>
         </div>
         <div style="height:10px"></div>
-
         <textarea id="alien" placeholder="Alien output/input appears here…"></textarea>
-
-        <div class="controls" style="margin-top:10px; justify-content:space-between;">
-          <div class="small" id="shareHint">Tip: include <code>AC2:</code> lines when sharing across apps.</div>
-          <div class="controls">
-            <button class="btn" id="downloadPackage" disabled>Download AC2 package</button>
-            <button class="btn" id="downloadText" disabled>Download as .txt</button>
-          </div>
-        </div>
-
-        <div style="height:10px"></div>
-        <div class="hintbox small">
-          <div style="font-weight:900; margin-bottom:6px;">Decode from file</div>
-          <div class="controls">
-            <input id="packagePick" type="file" accept=".ac2" />
-            <button class="btn" id="decodePackageBtn">Decode package</button>
-          </div>
-          <div class="small" style="margin-top:6px;">
-            If your alien glyphs get mangled in Slack, sending the <code>.ac2</code> package as a file attachment is the most reliable option.
-          </div>
+        <div class="small" style="margin-top:8px;">
+          Tip: some chat apps strip “fancy” Unicode. If that happens, keep the backup line that starts with <code>AC2:</code>.
         </div>
       </section>
     </div>
@@ -254,52 +141,10 @@ html = r"""<!doctype html>
             </select>
           </div>
           <div>
-            <label for="encodeWhat">Encode what?</label>
-            <select id="encodeWhat">
-              <option value="text">Text</option>
-              <option value="file">Image/GIF/File</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="height:10px"></div>
-
-        <div class="grid2">
-          <div>
             <label for="cipherMode">Cipher</label>
             <select id="cipherMode">
               <option value="standard">Standard (AES-GCM)</option>
               <option value="double">Double-wrap (AES-GCM twice)</option>
-            </select>
-          </div>
-          <div>
-            <label for="script">Alien script</label>
-            <select id="script">
-              <option value="braille64">Braille Matrix (copy-safe)</option>
-              <option value="runePair8">Rune Pair (ritual)</option>
-              <option value="sigil64">Sigil Array (might break in some apps)</option>
-              <option value="auto">Auto (decode only)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="height:10px"></div>
-
-        <div class="grid2">
-          <div>
-            <label for="ornament">Ornament</label>
-            <select id="ornament">
-              <option value="0">None</option>
-              <option value="1">Light</option>
-              <option value="2">Heavy</option>
-            </select>
-          </div>
-          <div>
-            <label for="outputStyle">Output style</label>
-            <select id="outputStyle">
-              <option value="glyphs_and_ac2">Alien glyphs + AC2 backup</option>
-              <option value="ac2_only">AC2 only (best for big media)</option>
-              <option value="glyphs_only">Glyphs only (fragile)</option>
             </select>
           </div>
         </div>
@@ -314,18 +159,53 @@ html = r"""<!doctype html>
 
         <div class="hr"></div>
 
+        <div style="font-weight:900; margin-bottom:8px;">Make it more alien</div>
+
+        <div class="grid2">
+          <div>
+            <label for="script">Alien script</label>
+            <select id="script">
+              <option value="braille64">Braille Matrix (most copy-safe)</option>
+              <option value="runePair8">Rune Pair (ritual)</option>
+              <option value="sigil64">Sigil Array (may break in some chats)</option>
+              <option value="auto">Auto (decode only)</option>
+            </select>
+            <div class="small" style="margin-top:6px;">
+              Receiver doesn’t need to pick the same one — decoder auto-detects from the text.
+            </div>
+          </div>
+          <div>
+            <label for="ornament">Ornament</label>
+            <select id="ornament">
+              <option value="0">None</option>
+              <option value="1">Light</option>
+              <option value="2">Heavy</option>
+            </select>
+            <div class="small" style="margin-top:6px;">Ornaments are visual noise; decoder strips them.</div>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
         <label for="iter">Password stretching (PBKDF2 iterations)</label>
         <input id="iter" type="range" min="80000" max="600000" step="10000" />
         <div class="small">Current: <span id="iterVal">—</span></div>
 
         <div class="hr"></div>
 
-        <div class="controls" style="justify-content:space-between;">
-          <div class="small">
-            <span class="tag"><span>🧠</span><span>Tip:</span> <span>For Slack, use <b>Copy for Slack</b> or send the <code>.ac2</code> file.</span></span>
+        <div style="font-weight:900; margin-bottom:8px;">Sharing</div>
+        <div class="hintbox small">
+          <label style="display:flex;gap:10px;align-items:center;margin:0;">
+            <input id="includeBackup" type="checkbox" style="width:auto" />
+            Include share-safe backup line (<code>AC2:...</code>) in the output
+          </label>
+          <div style="margin-top:6px;">
+            If your chat strips symbols/“emojis”, the <code>AC2:</code> line (ASCII-only) will still decode.
           </div>
-          <button class="btn primary" id="go">Encode →</button>
         </div>
+
+        <div style="height:14px"></div>
+        <button class="btn primary" id="go">Encode →</button>
 
         <div class="hr"></div>
 
@@ -338,23 +218,14 @@ html = r"""<!doctype html>
           <div>
             <label for="uiIcon">Icon (emoji)</label>
             <input id="uiIcon" placeholder="🜁" />
+            <div class="small" style="margin-top:6px;">
+              This is only UI. If some apps don’t preserve emoji, it won’t affect decoding (decoding uses the alien text / AC2 line).
+            </div>
           </div>
         </div>
 
         <div style="height:10px"></div>
-
         <div class="grid2">
-          <div>
-            <label for="uiTheme">Wallpaper</label>
-            <select id="uiTheme">
-              <option value="nebula">Nebula</option>
-              <option value="void">Void</option>
-              <option value="cyber">Cyber</option>
-              <option value="sunset">Sunset</option>
-              <option value="paper">Paper</option>
-              <option value="image">Custom image…</option>
-            </select>
-          </div>
           <div>
             <label for="uiAccent">Accent</label>
             <select id="uiAccent">
@@ -365,27 +236,9 @@ html = r"""<!doctype html>
               <option value="#fde68a">Gold</option>
             </select>
           </div>
-        </div>
-
-        <div style="height:10px"></div>
-
-        <div id="uiImageBox" style="display:none;">
-          <label for="uiImage">Upload background image</label>
-          <input id="uiImage" type="file" accept="image/*" />
-          <div class="small" style="margin-top:6px;">Saved locally in your browser storage.</div>
-        </div>
-
-        <div style="height:10px"></div>
-
-        <div class="grid2">
           <div>
             <label for="uiCardAlpha">Card transparency</label>
             <input id="uiCardAlpha" type="range" min="0.05" max="0.22" step="0.01" />
-          </div>
-          <div>
-            <label for="uiChunk">Slack chunk size (AC2 line length)</label>
-            <input id="uiChunk" type="range" min="1500" max="7000" step="250" />
-            <div class="small">Current: <span id="uiChunkVal">—</span></div>
           </div>
         </div>
 
@@ -400,22 +253,14 @@ html = r"""<!doctype html>
       </section>
 
       <section class="card">
-        <div style="font-weight:900; margin-bottom:8px;">How images/GIFs work</div>
+        <div style="font-weight:900; margin-bottom:8px;">Why decoding sometimes breaks when you copy</div>
         <div class="small">
-          <ul style="margin:0; padding-left:18px;">
-            <li>You can encode text or a file (image/GIF/anything).</li>
-            <li>It encrypts locally, then produces:
-              <ul style="margin:6px 0 0 16px;">
-                <li><b>Alien glyphs</b> (fun, but some apps can mangle them)</li>
-                <li><b>AC2 backup lines</b> (ASCII-only, share-safe)</li>
-                <li><b>.ac2 package file</b> (best for Slack attachments + big media)</li>
-              </ul>
-            </li>
-            <li>On decode, it auto-detects whether the decrypted data is text or media and shows a preview + download.</li>
-          </ul>
-          <div style="margin-top:10px;">
-            Pro move for Slack: click <b>Download AC2 package</b> and upload the file to Slack. Your teammate downloads it and decodes.
+          Some apps “sanitize” text and remove/replace certain Unicode symbols. That can destroy the alien glyph stream.<br/><br/>
+          This update fixes it by adding an optional <b>ASCII-only backup</b> line:
+          <div style="margin-top:8px;">
+            <code>AC2:...base64url...</code>
           </div>
+          If the glyphs get mangled, the receiver can paste the whole message (or just the AC2 line) and decode normally.
         </div>
       </section>
     </div>
@@ -424,115 +269,49 @@ html = r"""<!doctype html>
   <div id="toast" class="toast" style="display:none;"></div>
 
 <script>
-/* =========================
-   UI persistence + theming
-   ========================= */
-const UI_KEY = "ac:ui3";
-const UI_DEFAULT = {
-  name: "Alien Cipher",
-  icon: "🜁",
-  tagline: "Text + images + GIFs. Password-only. Share as alien glyphs or an AC2 package.",
-  theme: "nebula",
-  accent: "#e5e7eb",
-  cardAlpha: 0.08,
-  chunkSize: 3500,
-
-  // defaults for cipher UX
-  mode: "encode",
-  encodeWhat: "text",
-  cipherDefault: "standard",
-  scriptDefault: "braille64",
-  ornamentDefault: "1",
-  outputStyle: "glyphs_and_ac2",
-  iterDefault: 220000,
-
-  bgImageDataUrl: ""
+/* ---------------- UI persistence ---------------- */
+const UI_KEY="ac:ui2";
+const UI_DEFAULT={
+  name:"Alien Cipher",
+  icon:"🜁",
+  tagline:"Password-only encryption. Anyone with the same password can decode the alien text.",
+  accent:"#e5e7eb",
+  cardAlpha:0.08,
+  includeBackup:true,
+  scriptDefault:"braille64",
+  ornamentDefault:"1",
+  iterDefault:220000,
+  cipherDefault:"standard"
 };
-
-function loadUi(){
-  try { return { ...UI_DEFAULT, ...(JSON.parse(localStorage.getItem(UI_KEY) || "{}")) }; }
-  catch { return { ...UI_DEFAULT }; }
-}
+function loadUi(){ try{ return {...UI_DEFAULT, ...(JSON.parse(localStorage.getItem(UI_KEY)||"{}"))}; }catch{ return {...UI_DEFAULT}; } }
 function saveUi(cfg){ localStorage.setItem(UI_KEY, JSON.stringify(cfg)); }
-
-function themeToBg(theme, imageDataUrl){
-  if (theme === "image" && imageDataUrl) return { bg:"#070a14", bgImage:`url(${imageDataUrl})`, paper:false };
-  switch(theme){
-    case "void":   return { bg:"#05070f", bgImage:"radial-gradient(1000px 700px at 20% 15%, rgba(99,102,241,0.22), transparent 60%), radial-gradient(900px 700px at 85% 25%, rgba(14,165,233,0.16), transparent 55%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00))", paper:false };
-    case "cyber":  return { bg:"#06101b", bgImage:"linear-gradient(135deg, rgba(34,197,94,0.18), transparent 55%), linear-gradient(315deg, rgba(168,85,247,0.18), transparent 55%), radial-gradient(900px 700px at 50% 15%, rgba(59,130,246,0.18), transparent 60%)", paper:false };
-    case "sunset": return { bg:"#1a0b12", bgImage:"radial-gradient(900px 700px at 20% 20%, rgba(244,63,94,0.22), transparent 55%), radial-gradient(900px 700px at 80% 25%, rgba(251,191,36,0.18), transparent 55%), radial-gradient(900px 700px at 50% 95%, rgba(59,130,246,0.12), transparent 55%)", paper:false };
-    case "paper":  return { bg:"#f3f4f6", bgImage:"linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)), radial-gradient(900px 700px at 20% 20%, rgba(99,102,241,0.10), transparent 60%)", paper:true };
-    default:       return { bg:"#070a14", bgImage:"radial-gradient(1200px 800px at 12% 10%, rgba(99,102,241,0.28), transparent 55%), radial-gradient(900px 700px at 85% 20%, rgba(34,197,94,0.18), transparent 55%), radial-gradient(900px 700px at 50% 95%, rgba(244,63,94,0.12), transparent 55%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00))", paper:false };
-  }
-}
-
 function setFaviconFromEmoji(emoji){
-  const c = document.createElement("canvas");
-  c.width = 64; c.height = 64;
-  const ctx = c.getContext("2d");
-  ctx.font = "48px serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(emoji || "🜁", 32, 36);
-  let link = document.querySelector('link[rel="icon"]');
-  if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
-  link.href = c.toDataURL("image/png");
+  const c=document.createElement("canvas"); c.width=64; c.height=64;
+  const ctx=c.getContext("2d");
+  ctx.font="48px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(emoji||"🜁", 32, 36);
+  let link=document.querySelector('link[rel="icon"]');
+  if(!link){ link=document.createElement("link"); link.rel="icon"; document.head.appendChild(link); }
+  link.href=c.toDataURL("image/png");
 }
-
 function applyUi(cfg){
-  const { bg, bgImage, paper } = themeToBg(cfg.theme, cfg.bgImageDataUrl);
-  document.body.classList.toggle("paper", !!paper);
-  document.body.style.setProperty("--bg", bg);
-  document.body.style.setProperty("--bgImage", bgImage ? bgImage : "none");
-  document.body.style.backgroundColor = bg;
-  document.body.style.backgroundImage = bgImage ? bgImage : "none";
-
   document.body.style.setProperty("--accent", cfg.accent);
   document.body.style.setProperty("--cardAlpha", String(cfg.cardAlpha));
-
   document.getElementById("appName").textContent = cfg.name;
   document.getElementById("appIcon").textContent = cfg.icon || "🜁";
   document.getElementById("appTagline").textContent = cfg.tagline || UI_DEFAULT.tagline;
   document.title = cfg.name || "Alien Cipher";
-  setFaviconFromEmoji(cfg.icon || "🜁");
+  setFaviconFromEmoji(cfg.icon||"🜁");
 }
 
-/* =========================
-   Helpers (binary)
-   ========================= */
-const te = new TextEncoder();
-const td = new TextDecoder();
-
+/* ---------------- Helpers ---------------- */
+const te=new TextEncoder(), td=new TextDecoder();
 function randBytes(n){ const u8=new Uint8Array(n); crypto.getRandomValues(u8); return u8; }
-function concatBytes(...chunks){
-  const total=chunks.reduce((s,c)=>s+c.length,0);
-  const out=new Uint8Array(total);
-  let o=0;
-  for(const c of chunks){ out.set(c,o); o+=c.length; }
-  return out;
-}
-function u32be(n){
-  const b=new Uint8Array(4);
-  b[0]=(n>>>24)&255; b[1]=(n>>>16)&255; b[2]=(n>>>8)&255; b[3]=n&255;
-  return b;
-}
+function concatBytes(...chunks){ const total=chunks.reduce((s,c)=>s+c.length,0); const out=new Uint8Array(total); let o=0; for(const c of chunks){ out.set(c,o); o+=c.length; } return out; }
+function u32be(n){ const b=new Uint8Array(4); b[0]=(n>>>24)&255; b[1]=(n>>>16)&255; b[2]=(n>>>8)&255; b[3]=n&255; return b; }
 function readU32be(bytes,off){ return (((bytes[off]<<24)|(bytes[off+1]<<16)|(bytes[off+2]<<8)|bytes[off+3])>>>0); }
-
-function bytesToBase64(bytes){
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i=0;i<bytes.length;i+=chunk){
-    const sub = bytes.subarray(i, i+chunk);
-    bin += String.fromCharCode(...sub);
-  }
-  return btoa(bin);
-}
-function base64ToBytes(b64){
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
-  return out;
-}
+function bytesToBase64(bytes){ let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); }
+function base64ToBytes(b64){ const bin=atob(b64); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
 function bytesToBase64Url(bytes){
   return bytesToBase64(bytes).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
 }
@@ -541,21 +320,18 @@ function base64UrlToBytes(s){
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
   return base64ToBytes(b64 + pad);
 }
+async function copyText(t){ await navigator.clipboard.writeText(t); }
 
-async function copyText(text){ await navigator.clipboard.writeText(text); }
-
-function humanBytes(n){
-  const units = ["B","KB","MB","GB"];
-  let v = n, u = 0;
-  while (v >= 1024 && u < units.length-1){ v/=1024; u++; }
-  return `${v.toFixed(u===0?0:1)} ${units[u]}`;
+function toast(msg,type=""){
+  const t=document.getElementById("toast");
+  t.className="toast "+(type==="err"?"err":type==="ok"?"ok":"");
+  t.textContent=msg; t.style.display="block";
+  clearTimeout(window.__toastT);
+  window.__toastT=setTimeout(()=>t.style.display="none", 3200);
 }
 
-/* =========================
-   Crypto (password-only)
-   ========================= */
+/* ---------------- Crypto (password-only) ---------------- */
 const SALT_LEN=16, IV_LEN=12;
-
 async function deriveAesKeyFromPassword(password, salt, iterations){
   const baseKey = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
@@ -567,24 +343,14 @@ async function deriveAesKeyFromPassword(password, salt, iterations){
   );
 }
 
-async function encryptOnce(dataBytes, password, iterations){
-  const salt = randBytes(SALT_LEN);
-  const key = await deriveAesKeyFromPassword(password, salt, iterations);
-  const iv = randBytes(IV_LEN);
-  const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, dataBytes);
-  return { salt, iv, ct: new Uint8Array(ctBuf) };
-}
-
-async function decryptOnce(payloadBytes, password){
-  const p = unpackPayload(payloadBytes);
-  const key = await deriveAesKeyFromPassword(password, p.salt, p.iter);
-  const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv:p.iv}, key, p.ciphertext);
-  return { flags: p.flags, plaintextBytes: new Uint8Array(ptBuf) };
-}
-
-/* =========================
-   Payload (v2, supports double-wrap)
-   ========================= */
+/* ---------------- Payload (v2, supports double-wrap) ----------------
+   magic 'AC2\0' [4]
+   flags [1] bit0=doubleWrap
+   iter [4]
+   saltLen [1] salt [saltLen]
+   ivLen [1] iv [ivLen]
+   ciphertext [rest]
+*/
 const MAGIC = new Uint8Array([0x41,0x43,0x32,0x00]); // 'AC2\0'
 function startsWithMagic(b){
   if (b.length < 4) return false;
@@ -616,35 +382,9 @@ function unpackPayload(bytes){
   return { flags, iter, salt, iv, ciphertext };
 }
 
-/* =========================
-   Media envelope
-   ========================= */
-const MEDIA_MAGIC = new Uint8Array([0x41,0x43,0x4D,0x32]); // 'ACM2'
-function isMediaEnvelope(bytes){
-  if (bytes.length < 8) return false;
-  for(let i=0;i<4;i++) if (bytes[i] !== MEDIA_MAGIC[i]) return false;
-  return true;
-}
-function makeMediaEnvelope(meta, dataBytes){
-  const header = te.encode(JSON.stringify(meta));
-  return concatBytes(MEDIA_MAGIC, u32be(header.length), header, dataBytes);
-}
-function parseMediaEnvelope(bytes){
-  const headerLen = readU32be(bytes, 4);
-  const headerStart = 8;
-  const headerEnd = headerStart + headerLen;
-  if (headerEnd > bytes.length) throw new Error("Corrupt media envelope");
-  const headerJson = td.decode(bytes.slice(headerStart, headerEnd));
-  const meta = JSON.parse(headerJson);
-  const data = bytes.slice(headerEnd);
-  return { meta, data };
-}
-
-/* =========================
-   Alien scripts (glyphs)
-   ========================= */
+/* ---------------- Alien scripts ---------------- */
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const ORNAMENT_MARKS = ["\u0301","\u0307","\u0308","\u030A","\u030D","\u0310","\u0336","\u0338","\u034F"];
+const ORNAMENT_MARKS = ["\u0301","\u0307","\u0308","\u030A","\u030D","\u0310","\u0336","\u0338","\u034F"]; // combining marks
 const NOISE = ["⟐","⟠","⧖","⧗","⟡","⟣","⟤","⟬","⟭","⋇","⋈","⋉","⋊","⋋","⋌","⋍","⋎","⋏","⋒","⋓","⋔"];
 const SEP = [" "," · "," ᛫ "," ︙ ","\n"];
 
@@ -670,17 +410,17 @@ function maybeSep(i, level){
   return (i%18===17) ? "\n" : (i%4===3 ? SEP[Math.floor(Math.random()*SEP.length)] : "");
 }
 
-// Braille64
+// Script A: Braille64 (U+2800..U+283F) + pad U+28FF
 const PAD_BRAILLE = String.fromCharCode(0x28FF);
 function idxToBraille(i){ return String.fromCharCode(0x2800 + i); }
 function brailleToIdx(ch){
   const cp = ch.codePointAt(0);
-  if (cp===0x28FF) return -2;
+  if (cp===0x28FF) return -2; // pad
   if (cp>=0x2800 && cp<=0x283F) return cp-0x2800;
   return -1;
 }
 
-// RunePair8
+// Script B: RunePair8
 const GLYPH8 = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ"];
 const PAD_RUNE = "ᛝ";
 function idxToRunePair(i){ return GLYPH8[(i>>3)&7] + GLYPH8[i&7]; }
@@ -691,7 +431,7 @@ function runePairToIdx(a,b){
   return (hi<<3)|lo;
 }
 
-// Sigil64
+// Script C: Sigil64 (handpicked) + pad
 const SIGIL64 = [
   "⟐","⟑","⟒","⟓","⟔","⟕","⟖","⟗",
   "⟘","⟙","⟚","⟛","⟜","⟝","⟞","⟟",
@@ -805,635 +545,219 @@ function deAlienifyToB64(alienText){
   return indicesToB64(idxs);
 }
 
-/* =========================
-   AC2 backup parsing + chunking
-   ========================= */
-function formatAc2Lines(b64url, chunkSize){
-  if (b64url.length <= chunkSize) return [`AC2:${b64url}`];
-  const parts = Math.ceil(b64url.length / chunkSize);
-  const lines = [];
-  for (let i=0;i<parts;i++){
-    const part = b64url.slice(i*chunkSize, (i+1)*chunkSize);
-    lines.push(`AC2-${i+1}/${parts}:${part}`);
-  }
-  return lines;
-}
+/* ---------------- App logic ---------------- */
+const el=(id)=>document.getElementById(id);
+const plainEl=el("plain");
+const alienEl=el("alien");
+const passwordEl=el("password");
+const modeEl=el("mode");
+const cipherModeEl=el("cipherMode");
+const scriptEl=el("script");
+const ornamentEl=el("ornament");
+const iterEl=el("iter");
+const iterValEl=el("iterVal");
+const includeBackupEl = el("includeBackup");
+const goEl=el("go");
+const ctxEl=el("ctx");
 
-function extractAc2FromText(text){
-  const re = /AC2(?:-(\d+)\/(\d+))?:([A-Za-z0-9\-_]{20,})/ig;
-  const matches = [];
-  let m;
-  while ((m = re.exec(text)) !== null){
-    const idx = m[1] ? parseInt(m[1], 10) : 1;
-    const total = m[2] ? parseInt(m[2], 10) : 1;
-    const data = m[3];
-    matches.push({ idx, total, data });
-  }
-  if (matches.length === 0){
-    const trimmed = text.trim();
-    if (/^[A-Za-z0-9\-_]{80,}$/.test(trimmed)) return trimmed;
-    return null;
-  }
-
-  const totals = [...new Set(matches.map(x=>x.total))].sort((a,b)=>b-a);
-  for (const total of totals){
-    const set = matches.filter(x=>x.total===total);
-    if (total === 1){
-      set.sort((a,b)=>b.data.length-a.data.length);
-      return set[0].data;
-    }
-    const byIdx = new Map();
-    for (const part of set){
-      if (part.idx >= 1 && part.idx <= total) byIdx.set(part.idx, part.data);
-    }
-    if (byIdx.size === total){
-      let out = "";
-      for (let i=1;i<=total;i++) out += byIdx.get(i);
-      return out;
-    }
-  }
-
-  matches.sort((a,b)=>b.data.length-a.data.length);
-  return matches[0].data;
-}
-
-/* =========================
-   App logic
-   ========================= */
-const el = (id) => document.getElementById(id);
-
-const leftTitleEl = el("leftTitle");
-const plainEl = el("plain");
-const textInputBox = el("textInputBox");
-const fileInputBox = el("fileInputBox");
-const filePickEl = el("filePick");
-const dropZoneEl = el("dropZone");
-const filePreviewEl = el("filePreview");
-const filePreviewImgEl = el("filePreviewImg");
-const fileMetaEl = el("fileMeta");
-const clearFileEl = el("clearFile");
-
-const decodedMediaBox = el("decodedMediaBox");
-const decodedImg = el("decodedImg");
-const decodedMeta = el("decodedMeta");
-const downloadDecoded = el("downloadDecoded");
-const clearDecoded = el("clearDecoded");
-
-const alienEl = el("alien");
-const modeEl = el("mode");
-const encodeWhatEl = el("encodeWhat");
-const cipherModeEl = el("cipherMode");
-const scriptEl = el("script");
-const ornamentEl = el("ornament");
-const outputStyleEl = el("outputStyle");
-const passwordEl = el("password");
-const iterEl = el("iter");
-const iterValEl = el("iterVal");
-const goEl = el("go");
-const ctxEl = el("ctx");
-
-const copyLeftEl = el("copyLeft");
-const clearLeftEl = el("clearLeft");
-const copyAlienEl = el("copyAlien");
-const copySlackEl = el("copySlack");
-const clearAlienEl = el("clearAlien");
-
-const downloadPackageBtn = el("downloadPackage");
-const downloadTextBtn = el("downloadText");
-
-const packagePickEl = el("packagePick");
-const decodePackageBtn = el("decodePackageBtn");
-
-const shareHintEl = el("shareHint");
-
-const uiNameEl = el("uiName");
-const uiIconEl = el("uiIcon");
-const uiThemeEl = el("uiTheme");
-const uiAccentEl = el("uiAccent");
-const uiCardAlphaEl = el("uiCardAlpha");
-const uiImageBox = el("uiImageBox");
-const uiImageEl = el("uiImage");
-const uiChunkEl = el("uiChunk");
-const uiChunkValEl = el("uiChunkVal");
-const uiExportEl = el("uiExport");
-const uiImportEl = el("uiImport");
-const uiResetEl = el("uiReset");
-const uiBlobEl = el("uiBlob");
-
-let busy = false;
-let ui = loadUi();
-applyUi(ui);
-
-let selectedFile = null;
-let selectedFileBytes = null;
-let selectedFileObjectUrl = null;
-
-let decodedObjectUrl = null;
-
-let lastPayloadBytes = null; // Uint8Array
-let lastWasFile = false;
-let lastFilenameHint = "message";
-let lastWasHuge = false;
-
-function toast(msg, type=""){
-  const t = el("toast");
-  t.className = "toast " + (type==="err" ? "err" : type==="ok" ? "ok" : "");
-  t.textContent = msg;
-  t.style.display = "block";
-  clearTimeout(window.__toastT);
-  window.__toastT = setTimeout(()=>{ t.style.display="none"; }, 3400);
-}
-
-function setBusy(b){
-  busy = b;
-  goEl.disabled = b;
-  decodePackageBtn.disabled = b;
-  downloadPackageBtn.disabled = b || !lastPayloadBytes;
-  downloadTextBtn.disabled = b || !lastPayloadBytes;
-}
+let busy=false;
+function setBusy(b){ busy=b; goEl.disabled=b; }
+function updateGo(){ goEl.textContent = (modeEl.value==="encode") ? "Encode →" : "Decode →"; }
+modeEl.onchange = updateGo;
 
 function setIterDisplay(){ iterValEl.textContent = Number(iterEl.value).toLocaleString(); }
-function setChunkDisplay(){ uiChunkValEl.textContent = String(Number(uiChunkEl.value)); }
+iterEl.oninput = setIterDisplay;
 
-function updateGo(){
-  goEl.textContent = (modeEl.value === "encode") ? "Encode →" : "Decode →";
-  updateInputMode();
+async function encryptOnce(dataBytes, password, iterations){
+  const salt = randBytes(SALT_LEN);
+  const key = await deriveAesKeyFromPassword(password, salt, iterations);
+  const iv = randBytes(IV_LEN);
+  const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, dataBytes);
+  return { salt, iv, ct: new Uint8Array(ctBuf) };
 }
 
-function updateInputMode(){
-  const encodeWhat = encodeWhatEl.value;
-  const mode = modeEl.value;
-
-  if (mode === "encode"){
-    leftTitleEl.textContent = (encodeWhat === "text") ? "Text input" : "File input";
-    textInputBox.style.display = (encodeWhat === "text") ? "block" : "none";
-    fileInputBox.style.display = (encodeWhat === "file") ? "block" : "none";
-  } else {
-    leftTitleEl.textContent = "Decoded result";
-    textInputBox.style.display = "block";
-    fileInputBox.style.display = "none";
-  }
+async function decryptOnce(payloadBytes, password){
+  const p = unpackPayload(payloadBytes);
+  const key = await deriveAesKeyFromPassword(password, p.salt, p.iter);
+  const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv:p.iv}, key, p.ciphertext);
+  return { flags: p.flags, plaintextBytes: new Uint8Array(ptBuf) };
 }
 
-function clearSelectedFile(){
-  selectedFile = null;
-  selectedFileBytes = null;
-  filePickEl.value = "";
-  filePreviewEl.style.display = "none";
-  fileMetaEl.textContent = "";
-  if (selectedFileObjectUrl){ URL.revokeObjectURL(selectedFileObjectUrl); selectedFileObjectUrl = null; }
-  filePreviewImgEl.src = "";
-}
-
-async function pickFile(file){
-  if (!file) return;
-  selectedFile = file;
-  selectedFileBytes = new Uint8Array(await file.arrayBuffer());
-  lastFilenameHint = file.name || "file";
-  fileMetaEl.textContent = `${file.name || "file"} • ${file.type || "application/octet-stream"} • ${humanBytes(file.size)}`;
-  filePreviewEl.style.display = "flex";
-
-  if (file.type && file.type.startsWith("image/")){
-    if (selectedFileObjectUrl) URL.revokeObjectURL(selectedFileObjectUrl);
-    selectedFileObjectUrl = URL.createObjectURL(file);
-    filePreviewImgEl.src = selectedFileObjectUrl;
-    filePreviewImgEl.style.display = "block";
-  } else {
-    filePreviewImgEl.src = "";
-    filePreviewImgEl.style.display = "none";
-  }
-}
-
-function clearDecodedPreview(){
-  decodedMediaBox.style.display = "none";
-  decodedMeta.textContent = "";
-  decodedImg.src = "";
-  if (decodedObjectUrl){ URL.revokeObjectURL(decodedObjectUrl); decodedObjectUrl = null; }
-  downloadDecoded.href = "";
-}
-
-function setDecodedMedia(meta, dataBytes){
-  clearDecodedPreview();
-  const mime = meta?.mime || "application/octet-stream";
-  const name = meta?.name || "decoded.bin";
-  decodedMeta.textContent = `${name} • ${mime} • ${humanBytes(dataBytes.length)}`;
-  const blob = new Blob([dataBytes], { type: mime });
-  decodedObjectUrl = URL.createObjectURL(blob);
-  downloadDecoded.href = decodedObjectUrl;
-  downloadDecoded.download = name;
-
-  if (mime.startsWith("image/")){
-    decodedImg.src = decodedObjectUrl;
-    decodedImg.style.display = "block";
-  } else {
-    decodedImg.src = "";
-    decodedImg.style.display = "none";
-  }
-  decodedMediaBox.style.display = "block";
-}
-
-function updateShareHint(){
-  const style = outputStyleEl.value;
-  if (style === "glyphs_only"){
-    shareHintEl.textContent = "Warning: glyphs-only is fragile in Slack. Use AC2 backup or .ac2 file.";
-  } else if (style === "ac2_only"){
-    shareHintEl.textContent = "AC2-only is the most share-safe (best for big media).";
-  } else {
-    shareHintEl.textContent = "Tip: include AC2 lines when sharing across apps.";
-  }
-}
-
-function slackOnlyText(fullText){
-  const ac2 = extractAc2FromText(fullText);
-  if (!ac2) return fullText.trim();
-  const lines = formatAc2Lines(ac2, ui.chunkSize);
-  return lines.join("\n");
-}
-
-function updateDownloadButtons(){
-  downloadPackageBtn.disabled = !lastPayloadBytes || busy;
-  downloadTextBtn.disabled = !lastPayloadBytes || busy;
-}
-
-function downloadBlob(data, filename, mime){
-  const blob = new Blob([data], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-
-function choosePackageFilename(){
-  const base = (lastFilenameHint || "message").replace(/[^\w\-.]+/g,"_");
-  const stamp = new Date().toISOString().replace(/[:.]/g,"-");
-  return `${base}.${stamp}.ac2`;
-}
-
-/* =========================
-   Encode / Decode
-   ========================= */
-const MAX_B64_FOR_GLYPHS = 12000;
-const MAX_TEXT_REASONABLE = 40000;
-
-async function buildPlaintextBytesForEncode(){
-  if (encodeWhatEl.value === "file"){
-    if (!selectedFile || !selectedFileBytes) throw new Error("Pick a file first.");
-    const meta = {
-      kind: "file",
-      name: selectedFile.name || "file.bin",
-      mime: selectedFile.type || "application/octet-stream",
-      size: selectedFileBytes.length,
-      ts: Date.now()
-    };
-    lastWasFile = true;
-    lastFilenameHint = meta.name;
-    return makeMediaEnvelope(meta, selectedFileBytes);
-  } else {
-    const text = plainEl.value;
-    if (!text.trim()) throw new Error("Type a message to encode.");
-    lastWasFile = false;
-    lastFilenameHint = "message";
-    return te.encode(text);
-  }
+function extractBackupCode(text){
+  // Accept:
+  // - AC2:xxxx
+  // - ac2:xxxx
+  // - just xxxx (base64url) if it looks like it
+  const m = text.match(/(?:^|\s)AC2:([A-Za-z0-9\-_]{20,})(?:\s|$)/i);
+  if (m) return m[1];
+  const trimmed = text.trim();
+  if (/^[A-Za-z0-9\-_]{60,}$/.test(trimmed)) return trimmed;
+  return null;
 }
 
 async function doEncode(){
+  const plain = plainEl.value;
   const pw = passwordEl.value;
-  if (!pw) throw new Error("Enter the shared password.");
-  const iter = Number(iterEl.value);
+  if (!plain.trim()) return toast("Type a message to encode.", "err");
+  if (!pw) return toast("Enter the shared password.", "err");
 
-  const dataBytes = await buildPlaintextBytesForEncode();
+  setBusy(true);
+  try{
+    const iter = Number(iterEl.value);
+    const ornamentLevel = Number(ornamentEl.value);
+    const script = scriptEl.value === "auto" ? "braille64" : scriptEl.value;
 
-  let payloadBytes;
-  if (cipherModeEl.value === "double"){
-    const innerEnc = await encryptOnce(dataBytes, pw, iter);
-    const innerPayload = packPayload(0, iter, innerEnc.salt, innerEnc.iv, innerEnc.ct);
-    const outerEnc = await encryptOnce(innerPayload, pw, iter);
-    payloadBytes = packPayload(1, iter, outerEnc.salt, outerEnc.iv, outerEnc.ct);
-  } else {
-    const enc = await encryptOnce(dataBytes, pw, iter);
-    payloadBytes = packPayload(0, iter, enc.salt, enc.iv, enc.ct);
-  }
+    let payloadBytes;
 
-  lastPayloadBytes = payloadBytes;
-  lastWasHuge = false;
+    if (cipherModeEl.value === "double"){
+      const innerEnc = await encryptOnce(te.encode(plain), pw, iter);
+      const innerPayload = packPayload(0, iter, innerEnc.salt, innerEnc.iv, innerEnc.ct);
+      const outerEnc = await encryptOnce(innerPayload, pw, iter);
+      payloadBytes = packPayload(1, iter, outerEnc.salt, outerEnc.iv, outerEnc.ct);
+    } else {
+      const enc = await encryptOnce(te.encode(plain), pw, iter);
+      payloadBytes = packPayload(0, iter, enc.salt, enc.iv, enc.ct);
+    }
 
-  const b64url = bytesToBase64Url(payloadBytes);
-  const ac2Lines = formatAc2Lines(b64url, ui.chunkSize);
-
-  const style = outputStyleEl.value;
-
-  let glyphText = "";
-  if (style !== "ac2_only"){
     const b64 = bytesToBase64(payloadBytes);
-    if (b64.length <= MAX_B64_FOR_GLYPHS){
-      const script = (scriptEl.value === "auto") ? "braille64" : scriptEl.value;
-      const ornament = Number(ornamentEl.value);
-      glyphText = alienify(b64, script, ornament);
-    } else {
-      glyphText = "⟦…⟧ (glyph rendering skipped: payload too large)";
-      lastWasHuge = true;
-    }
-  }
+    const b64url = bytesToBase64Url(payloadBytes);
 
-  let out = "";
-  if (style === "glyphs_only"){
-    out = glyphText;
-    if (lastWasHuge) {
-      out += "\n\n(Too big for real glyph output. Use AC2-only or download the .ac2 package.)";
-    }
-  } else if (style === "ac2_only"){
-    out = ac2Lines.join("\n");
-  } else {
-    out = glyphText + "\n\n" + ac2Lines.join("\n");
-  }
+    const glyphs = alienify(b64, script, ornamentLevel);
+    alienEl.value = includeBackupEl.checked
+      ? (glyphs + "\n\nAC2:" + b64url)
+      : glyphs;
 
-  const approxChars = out.length;
-  if (approxChars > MAX_TEXT_REASONABLE){
-    toast("This output is very large. For Slack, prefer downloading the .ac2 package and uploading it as a file.", "err");
-  } else {
-    toast(lastWasFile ? "File encoded." : "Text encoded.", "ok");
+    toast("Encoded.", "ok");
+  } catch(e){
+    toast(e?.message || String(e), "err");
+  } finally {
+    setBusy(false);
   }
-
-  alienEl.value = out;
-  updateDownloadButtons();
 }
 
-async function decodeFromPayloadBytes(payloadBytes){
+async function doDecode(){
   const pw = passwordEl.value;
-  if (!pw) throw new Error("Enter the shared password.");
+  if (!alienEl.value.trim()) return toast("Paste alien text to decode.", "err");
+  if (!pw) return toast("Enter the shared password.", "err");
 
-  const first = await decryptOnce(payloadBytes, pw);
-  let plainBytes;
-  if ((first.flags & 1) === 1){
-    const second = await decryptOnce(first.plaintextBytes, pw);
-    plainBytes = second.plaintextBytes;
-  } else {
-    plainBytes = first.plaintextBytes;
-  }
-
-  clearDecodedPreview();
-
-  if (isMediaEnvelope(plainBytes)){
-    const { meta, data } = parseMediaEnvelope(plainBytes);
-    setDecodedMedia(meta, data);
-    plainEl.value = `[Decoded file]\nName: ${meta?.name || "decoded.bin"}\nMIME: ${meta?.mime || "application/octet-stream"}\nSize: ${humanBytes(data.length)}\n\n(Use the Download button to save the file.)`;
-    toast("Decoded media.", "ok");
-  } else {
-    plainEl.value = td.decode(plainBytes);
-    toast("Decoded text.", "ok");
-  }
-}
-
-async function doDecodeFromText(){
-  const text = alienEl.value.trim();
-  if (!text) throw new Error("Paste an alien message to decode.");
-
-  const ac2 = extractAc2FromText(text);
-  let payloadBytes;
-
-  if (ac2){
-    payloadBytes = base64UrlToBytes(ac2);
-  } else {
-    const b64 = deAlienifyToB64(text);
-    payloadBytes = base64ToBytes(b64);
-  }
-  await decodeFromPayloadBytes(payloadBytes);
-}
-
-async function doDecodeFromPackageFile(file){
-  if (!file) throw new Error("Pick a .ac2 package file first.");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  await decodeFromPayloadBytes(bytes);
-}
-
-/* =========================
-   Events
-   ========================= */
-modeEl.onchange = () => { ui.mode = modeEl.value; saveUi(ui); updateGo(); };
-encodeWhatEl.onchange = () => { ui.encodeWhat = encodeWhatEl.value; saveUi(ui); updateInputMode(); };
-cipherModeEl.onchange = () => { ui.cipherDefault = cipherModeEl.value; saveUi(ui); };
-scriptEl.onchange = () => { ui.scriptDefault = scriptEl.value; saveUi(ui); };
-ornamentEl.onchange = () => { ui.ornamentDefault = ornamentEl.value; saveUi(ui); };
-outputStyleEl.onchange = () => { ui.outputStyle = outputStyleEl.value; saveUi(ui); updateShareHint(); };
-iterEl.oninput = () => { setIterDisplay(); };
-iterEl.onchange = () => { ui.iterDefault = Number(iterEl.value); saveUi(ui); };
-
-goEl.onclick = async () => {
-  if (busy) return;
   setBusy(true);
   try{
-    if (modeEl.value === "encode"){
-      await doEncode();
+    // 1) If backup exists, prefer it (most reliable)
+    const backup = extractBackupCode(alienEl.value);
+    let bytes;
+
+    if (backup){
+      bytes = base64UrlToBytes(backup);
     } else {
-      await doDecodeFromText();
+      // 2) Try glyph decode
+      const b64 = deAlienifyToB64(alienEl.value);
+      bytes = base64ToBytes(b64);
     }
+
+    const first = await decryptOnce(bytes, pw);
+    if ((first.flags & 1) === 1){
+      const second = await decryptOnce(first.plaintextBytes, pw);
+      plainEl.value = td.decode(second.plaintextBytes);
+    } else {
+      plainEl.value = td.decode(first.plaintextBytes);
+    }
+
+    toast("Decoded.", "ok");
   } catch(e){
-    toast(e?.message || String(e), "err");
+    toast((e?.message || String(e)) + "\n\nIf your chat mangled the glyphs, include the AC2: line when sharing.", "err");
   } finally {
     setBusy(false);
   }
-};
+}
 
-copyLeftEl.onclick = async () => {
-  if (decodedMediaBox.style.display === "block"){
-    await copyText(plainEl.value || "");
-    toast("Copied decoded summary.", "ok");
-    return;
-  }
-  if (encodeWhatEl.value === "file" && modeEl.value === "encode"){
-    toast("File mode: copy the alien message from the right panel.", "err");
-    return;
-  }
-  await copyText(plainEl.value || "");
-  toast("Copied.", "ok");
-};
-clearLeftEl.onclick = () => {
-  plainEl.value = "";
-  toast("Cleared.", "ok");
-};
-
-copyAlienEl.onclick = async () => {
-  await copyText(alienEl.value || "");
-  toast("Copied alien message.", "ok");
-};
-copySlackEl.onclick = async () => {
-  const t = slackOnlyText(alienEl.value || "");
-  await copyText(t);
-  toast("Copied Slack-safe AC2 lines.", "ok");
-};
-clearAlienEl.onclick = () => { alienEl.value = ""; toast("Cleared alien message.", "ok"); };
-
-downloadPackageBtn.onclick = () => {
-  if (!lastPayloadBytes) return;
-  const name = choosePackageFilename();
-  downloadBlob(lastPayloadBytes, name, "application/octet-stream");
-  toast("Downloaded .ac2 package.", "ok");
-};
-downloadTextBtn.onclick = () => {
-  const content = alienEl.value || "";
-  if (!content.trim()) return toast("Nothing to download.", "err");
-  const base = (lastFilenameHint || "message").replace(/[^\w\-.]+/g,"_");
-  const stamp = new Date().toISOString().replace(/[:.]/g,"-");
-  downloadBlob(content, `${base}.${stamp}.txt`, "text/plain;charset=utf-8");
-  toast("Downloaded .txt", "ok");
-};
-
-decodePackageBtn.onclick = async () => {
+goEl.onclick = async ()=> {
   if (busy) return;
-  setBusy(true);
-  try{
-    const f = packagePickEl.files?.[0];
-    if (!f) throw new Error("Pick a .ac2 file first.");
-    modeEl.value = "decode";
-    ui.mode = "decode"; saveUi(ui);
-    updateGo();
-    await doDecodeFromPackageFile(f);
-  } catch(e){
-    toast(e?.message || String(e), "err");
-  } finally {
-    setBusy(false);
-  }
+  if (modeEl.value==="encode") await doEncode();
+  else await doDecode();
 };
 
-clearDecoded.onclick = () => {
-  clearDecodedPreview();
-  toast("Cleared preview.", "ok");
-};
+document.getElementById("copyPlain").onclick = async ()=>{ if(plainEl.value){ await copyText(plainEl.value); toast("Copied plaintext.", "ok"); } };
+document.getElementById("copyAlien").onclick = async ()=>{ if(alienEl.value){ await copyText(alienEl.value); toast("Copied alien text.", "ok"); } };
+document.getElementById("clearPlain").onclick = ()=> plainEl.value="";
+document.getElementById("clearAlien").onclick = ()=> alienEl.value="";
 
-/* File picking + drag drop */
-filePickEl.onchange = async () => {
-  const f = filePickEl.files?.[0];
-  await pickFile(f);
-};
+/* ---- Customize UI controls ---- */
+const uiName=el("uiName"), uiIcon=el("uiIcon"), uiAccent=el("uiAccent"), uiCardAlpha=el("uiCardAlpha");
+const uiExport=el("uiExport"), uiImport=el("uiImport"), uiReset=el("uiReset"), uiBlob=el("uiBlob");
 
-clearFileEl.onclick = () => {
-  clearSelectedFile();
-  toast("Removed file.", "ok");
-};
+let ui = loadUi();
+applyUi(ui);
 
-dropZoneEl.addEventListener("dragover", (e)=>{
-  e.preventDefault();
-  dropZoneEl.classList.add("drag");
-});
-dropZoneEl.addEventListener("dragleave", ()=>{
-  dropZoneEl.classList.remove("drag");
-});
-dropZoneEl.addEventListener("drop", async (e)=>{
-  e.preventDefault();
-  dropZoneEl.classList.remove("drag");
-  const f = e.dataTransfer?.files?.[0];
-  await pickFile(f);
-});
-
-/* =========================
-   Customize UI controls
-   ========================= */
 function syncUiInputs(){
-  uiNameEl.value = ui.name;
-  uiIconEl.value = ui.icon;
-  uiThemeEl.value = ui.theme;
-  uiAccentEl.value = ui.accent;
-  uiCardAlphaEl.value = String(ui.cardAlpha);
-  uiChunkEl.value = String(ui.chunkSize);
-  setChunkDisplay();
-  uiImageBox.style.display = (ui.theme === "image") ? "block" : "none";
-
-  modeEl.value = ui.mode || "encode";
-  encodeWhatEl.value = ui.encodeWhat || "text";
-  cipherModeEl.value = ui.cipherDefault || "standard";
+  uiName.value = ui.name;
+  uiIcon.value = ui.icon;
+  uiAccent.value = ui.accent;
+  uiCardAlpha.value = String(ui.cardAlpha);
+  includeBackupEl.checked = !!ui.includeBackup;
+  // defaults for alien options (per user)
   scriptEl.value = ui.scriptDefault || "braille64";
   ornamentEl.value = String(ui.ornamentDefault ?? "1");
-  outputStyleEl.value = ui.outputStyle || "glyphs_and_ac2";
+  cipherModeEl.value = ui.cipherDefault || "standard";
   iterEl.value = String(ui.iterDefault || 220000);
   setIterDisplay();
-  updateShareHint();
-  updateGo();
 }
-
 function updateUi(partial){
-  ui = { ...ui, ...partial };
+  ui = {...ui, ...partial};
   saveUi(ui);
   applyUi(ui);
   syncUiInputs();
 }
+uiName.oninput = ()=> updateUi({name: uiName.value || UI_DEFAULT.name});
+uiIcon.oninput = ()=> updateUi({icon: uiIcon.value || UI_DEFAULT.icon});
+uiAccent.onchange = ()=> updateUi({accent: uiAccent.value});
+uiCardAlpha.oninput = ()=> updateUi({cardAlpha: Number(uiCardAlpha.value)});
 
-uiNameEl.oninput = ()=> updateUi({ name: uiNameEl.value || UI_DEFAULT.name });
-uiIconEl.oninput = ()=> updateUi({ icon: uiIconEl.value || UI_DEFAULT.icon });
-uiThemeEl.onchange = ()=> updateUi({ theme: uiThemeEl.value });
-uiAccentEl.onchange = ()=> updateUi({ accent: uiAccentEl.value });
-uiCardAlphaEl.oninput = ()=> updateUi({ cardAlpha: Number(uiCardAlphaEl.value) });
-uiChunkEl.oninput = ()=> updateUi({ chunkSize: Number(uiChunkEl.value) });
-uiImageEl.onchange = async () => {
-  const f = uiImageEl.files?.[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = () => updateUi({ theme: "image", bgImageDataUrl: String(reader.result || "") });
-  reader.readAsDataURL(f);
-};
+includeBackupEl.onchange = ()=> updateUi({ includeBackup: includeBackupEl.checked });
+scriptEl.onchange = ()=> updateUi({ scriptDefault: scriptEl.value });
+ornamentEl.onchange = ()=> updateUi({ ornamentDefault: ornamentEl.value });
+cipherModeEl.onchange = ()=> updateUi({ cipherDefault: cipherModeEl.value });
+iterEl.onchange = ()=> updateUi({ iterDefault: Number(iterEl.value) });
 
-uiExportEl.onclick = () => { uiBlobEl.value = JSON.stringify(ui, null, 2); toast("Exported settings.", "ok"); };
-uiImportEl.onclick = () => {
-  try {
-    const parsed = JSON.parse(uiBlobEl.value || "{}");
-    updateUi(parsed);
-    toast("Imported settings.", "ok");
-  } catch {
-    toast("Invalid JSON.", "err");
-  }
+uiExport.onclick = ()=>{ uiBlob.value = JSON.stringify(ui, null, 2); toast("Exported settings (copy JSON).","ok"); };
+uiImport.onclick = ()=>{
+  try{ const parsed = JSON.parse(uiBlob.value||"{}"); updateUi(parsed); toast("Imported settings.","ok"); }
+  catch{ toast("Invalid JSON.","err"); }
 };
-uiResetEl.onclick = () => {
-  ui = { ...UI_DEFAULT };
-  saveUi(ui);
-  applyUi(ui);
-  syncUiInputs();
-  uiBlobEl.value = "";
-  toast("Reset.", "ok");
-};
+uiReset.onclick = ()=>{ ui={...UI_DEFAULT}; saveUi(ui); applyUi(ui); syncUiInputs(); uiBlob.value=""; toast("Reset.","ok"); };
 
-/* =========================
-   Init
-   ========================= */
-(function init(){
-  applyUi(ui);
+function init(){
+  updateGo();
   syncUiInputs();
   ctxEl.textContent = `Context: ${location.protocol}//${location.host || "(local file)"}`;
-  updateDownloadButtons();
-})();
+}
+init();
 </script>
 </body>
 </html>
 """
 
-out_dir = Path("/mnt/data/alien-cipher-media-update")
+out_dir = Path("/mnt/data/alien-cipher-update")
 out_dir.mkdir(parents=True, exist_ok=True)
-(index_path := out_dir / "index.html").write_text(html, encoding="utf-8")
+index_path = out_dir / "index.html"
+index_path.write_text(html, encoding="utf-8")
 
-readme = """# Alien Cipher — Media Update
+readme = """# Alien Cipher (GitHub Pages update)
 
-This update adds **images/GIFs/files** while keeping all prior features:
-- Password-only encryption (AES-GCM + PBKDF2)
-- Optional double-wrap
-- Alien scripts + ornaments
-- AC2 share-safe backup lines (ASCII)
-- GitHub Pages friendly (single index.html)
-- Per-user UI customization saved locally (localStorage)
+This is a single-file, password-only alien encoder/decoder.
 
-## Best practice for Slack
-- For big images/GIFs, use **Download AC2 package** and upload the `.ac2` file to Slack.
-- Teammate downloads it and uses **Decode package**.
+## What's new in this update
+- Adds a share-safe ASCII backup line: `AC2:...` (base64url)
+- Decoder automatically uses the AC2 line if present (so chats that strip Unicode won't break decoding)
+- Defaults to the "Braille Matrix" script (most copy-safe)
+- Each user still has their own UI/theme settings (saved locally in their browser)
 
-## Deploy (same URL)
+## Deploy (update existing link)
 Replace your repo's `index.html` with this one and commit to `main`.
-GitHub Pages redeploys automatically.
+GitHub Pages will redeploy automatically (same URL).
 """
 (out_dir / "README.md").write_text(readme, encoding="utf-8")
 
-zip_path = Path("/mnt/data/alien-cipher-media-update.zip")
+zip_path = Path("/mnt/data/alien-cipher-pages-update.zip")
 with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
     z.write(index_path, arcname="index.html")
     z.write(out_dir / "README.md", arcname="README.md")
